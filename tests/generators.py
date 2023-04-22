@@ -1,7 +1,7 @@
 import unittest
 
 from pysh import *
-from pysh.main import cat_list
+# from pysh.main import cat_list
 
 
 class PyshTest(unittest.TestCase):
@@ -101,7 +101,7 @@ class PyshTest(unittest.TestCase):
         self.assertEqual(result, "a aa b c cd x".split())
 
     def test_file_saver(self):
-        cat_list("a b c d efgh x".split()) | file_saver("/tmp/pysh_test/file_saver_test")
+        cat_list("a b c d efgh x".split()) | to_file("/tmp/pysh_test/file_saver_test")
         content = list(cat("/tmp/pysh_test/file_saver_test"))
         self.assertEqual(content, "a b c d efgh x".split())
 
@@ -112,7 +112,7 @@ class PyshTest(unittest.TestCase):
             [["a", "c", "d"], ["x", "z", "ź"], ["i", "k", "l"]])
 
     def test_wc(self):
-        cat_list("a b c d efgh\t1 x".split(" ")) | file_saver("/tmp/pysh_test/wc_test")
+        cat_list("a b c d efgh\t1 x".split(" ")) | to_file("/tmp/pysh_test/wc_test")
         self.assertEqual(tuple(cat_list("a b c d efgh\t1 x".split(" ")) | wc()), (11, 7, 6))
         self.assertEqual(tuple(wc("/tmp/pysh_test/wc_test")), (17, 7, 6))
         self.assertEqual(tuple(cat("/tmp/pysh_test/wc_test") | wc()), (11, 7, 6))

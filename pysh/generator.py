@@ -1,4 +1,5 @@
 import subprocess
+
 # https://sourceforge.net/projects/pysh/
 
 _generator_class = type((i for i in []))
@@ -8,11 +9,11 @@ class PipeElement:
     pass  # marker class
 
 
-def generator(gen=None, len=None):
-    if len is None:
+def generator(gen=None, len_=None):
+    if len_ is None:
         return Generator(gen)
     else:
-        return KnownLengthGenerator(gen, len)
+        return KnownLengthGenerator(gen, len_)
 
 
 class Generator(PipeElement):
@@ -53,24 +54,11 @@ class Generator(PipeElement):
             except (TypeError, AssertionError):
                 return pipe_from_func(other)().__ror__(self)
 
-    # def __or__(self, other):
-    #     if type(other) in (generator, generator_concat):
-    #         return other.__ror__(self)
-    #     else:
-    #         try:
-    #             dest = other(self)
-    #             assert type(dest) == _generator_class
-    #             return self | generator(dest)
-    #         except (AssertionError, TypeError):  # TODO: what exception?
-    #             dest = pipe_from_func(other)
-    #             return self | dest
-    #         # ...  # other może być generatorem albo funkcją
-
     def __add__(self, other):
-        return generator_concat(self, other)
+        return GeneratorConcat(self, other)
 
     def __radd__(self, other):
-        return generator_concat(other, self)
+        return GeneratorConcat(other, self)
 
 
 class KnownLengthGenerator(Generator):
@@ -83,7 +71,7 @@ class KnownLengthGenerator(Generator):
         return self.__len
 
 
-class generator_concat(Generator):
+class GeneratorConcat(Generator):
     """Concatenation of generators - generates all data from the first one, then from the second and so on"""
 
     def __init__(self, *gens):
@@ -106,10 +94,10 @@ class generator_concat(Generator):
             raise StopIteration()
 
     def __add__(self, other):
-        return generator_concat(self, other)
+        return GeneratorConcat(self, other)
 
     def __radd__(self, other):
-        return generator_concat(other, self)
+        return GeneratorConcat(other, self)
 
 
 def make_pipe(len_):
@@ -159,17 +147,6 @@ def make_source(len_):
         return inner(len_)
     else:
         return inner
-
-
-# def make_source(len_func):
-#
-#     def decorator(func, *args):
-#         def inner(*args, **kwargs):
-#             return generator((elem for elem in func(*args, **kwargs)), len_func(*args, **kwargs))
-#
-#         return inner
-#
-#     return decorator
 
 
 def make_drain(f):
