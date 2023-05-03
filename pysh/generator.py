@@ -116,7 +116,13 @@ def make_pipe(len_):
                 self.kwargs = kwargs
 
             def gen(self):
-                yield from (elem for elem in func(self.source, *self.args, **self.kwargs))
+                if self.source is not None:
+                    yield from (elem for elem in func(self.source, *self.args, **self.kwargs))
+                else:
+                    yield from (elem for elem in func(*self.args, **self.kwargs))
+
+            def __call__(self, source, *args, **kwargs):
+                yield from (elem for elem in func(source, *self.args, **self.kwargs))
 
         return decorator
 
@@ -129,23 +135,35 @@ def make_pipe(len_):
 def make_source(len_):
     """Decorator for a function making it available for concatenation and piping"""
 
-    def inner(func):
-        # @wraps(func)
-        class decorator(Generator):
-
-            def __init__(self, *args, **kwargs):
-                super().__init__(None, len_)
-                self.args = args
-                self.kwargs = kwargs
-
-            def gen(self):
-                yield from (elem for elem in func(*self.args, **self.kwargs))
-
-        return decorator
-
     if "__call__" in dir(len_):
+        def inner(func):
+            # @wraps(func)
+            class decorator(Generator):
+
+                def __init__(self, *args, **kwargs):
+                    super().__init__(None)
+                    self.args = args
+                    self.kwargs = kwargs
+
+                def gen(self):
+                    yield from (elem for elem in func(*self.args, **self.kwargs))
+
+            return decorator
         return inner(len_)
     else:
+        def inner(func):
+            # @wraps(func)
+            class decorator(KnownLengthGenerator):
+
+                def __init__(self, *args, **kwargs):
+                    super().__init__(None, len_)
+                    self.args = args
+                    self.kwargs = kwargs
+
+                def gen(self):
+                    yield from (elem for elem in func(*self.args, **self.kwargs))
+
+            return decorator
         return inner
 
 

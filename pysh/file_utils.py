@@ -5,8 +5,8 @@ from pathlib import Path
 
 import psutil
 
+from .generator import make_source, make_pipe
 from .main import Flags, NO_FLAGS
-from .generator import make_source, make_drain, make_pipe
 
 _working_dir = os.path.abspath(os.path.curdir)
 _prev_working_dir = _working_dir
@@ -105,9 +105,6 @@ def pwd():
     return _working_dir
 
 
-
-
-
 def touch(filename):
     """Touches the file - if it doesn't exist creates it, and if it does updates the access time"""
     _to_absolute(filename).touch(exist_ok=True)
@@ -187,7 +184,7 @@ def find(path, name="", file_type=None, skip_hidden=False):
     def find_all(path, filter_hidden=False):
         path = _to_absolute(path)
         for root, dirs, files in os.walk(_to_absolute(path)):
-            if filter_hidden and any(dirname.startswith(".") for dirname in root.split(os.sep)):
+            if filter_hidden and any(dirname.startswith(".") for dirname in root.split(os.path.sep)):
                 continue
             for name in files + dirs:
                 if not (filter_hidden and name.startswith(".")):  # for Posix systems

@@ -31,17 +31,17 @@ class grep(Generator):
         if it is compiled regex it is searched for using the search method
     start_num - if flag N is specified, this argument allows to change the numbering from zero-based (default) to any other
     Flags:
+    I - ignore case
     V - retain only NOT matching elements
     N - prepend numbers
     """
 
-    # i - ignore case
     def __init__(self, pattern, flags=NO_FLAGS, start_num=0):
         super().__init__(None)
         self.re = pattern
         self.start_num = start_num
         self.flags = flags
-        if 'search' not in self.re:
+        if 'search' not in dir(self.re):
             self.re = re.compile(self.re)
         if Flags.I in flags:
             self.re = re.compile(self.re.pattern, self.re.flags | re.IGNORECASE)
@@ -272,6 +272,12 @@ class wc(PipeElement):
 
     def __iter__(self):
         return iter(self.res)
+
+    def __eq__(self, other):
+        if type(other) is wc:
+            return self.res == other.res
+        elif type(other) is tuple:
+            return tuple(self.res) == other
 
 
 def comm(gen1, gen2, suppress=""):
