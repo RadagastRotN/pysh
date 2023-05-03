@@ -17,8 +17,8 @@ class SourcesTest(unittest.TestCase):
         self.assertEqual(content, ["a", "b", "cde", "bde", ""])
 
     def test_cat_list(self):
-        lst = "a b cde fgh x".split()
-        self.assertEqual(list(cat_list(lst)), lst)
-        lst = list(range(4)) + list('abc')
-        self.assertEqual(list(cat_list(lst)), lst)
+        lst = ['a', 'b', 'cde', 'fgh', 'x']
+        self.assertEqual(list(cat_list(lst[:])), lst)
+        lst = [0, 1, 2, 3, 'a', 'b', 'c', [1, 2, 3]]
+        self.assertEqual(list(cat_list(lst[:])), lst)
 

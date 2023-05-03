@@ -1,3 +1,4 @@
+import re
 import unittest
 
 from pysh import cd, pwd, find, ls, rm, mkdir, touch, Flags
@@ -38,34 +39,42 @@ class FileUtilsTest(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             cd("ZZZ")
         self.assertEqual(pwd(), "/tmp/pysh_test")
+        with self.assertRaises(FileNotFoundError):
+            cd("/tmp/pysh_test/nonexistent_directory")
+        with self.assertRaises(FileNotFoundError):
+            cd("/tmp /pysh_test")
 
     def test_ls(self):
-        self.assertEqual(set(list(ls(dirname="/tmp/pysh_test/", only_dirs=True))), set("foo x A".split()))
-        self.assertEqual(set(list(ls(dirname="/tmp/pysh_test/A/B"))), set("C D test1".split()))
+        self.assertEqual(set(ls(dirname="/tmp/pysh_test/", only_dirs=True)), {'A', 'foo', 'x'})
+        self.assertEqual(set(ls(dirname="/tmp/pysh_test/A/B")), {'test1', 'C', 'D'})
         with cd("/tmp/pysh_test/A/B"):
-            self.assertEqual(set(list(ls())), set("C D test1".split()))
+            self.assertEqual(set(ls()), {'test1', 'C', 'D'})
 
     def test_rm(self):
         with open("/tmp/pysh_test/rm_test", "w") as outfile:
             outfile.write("abc\n")
         rm("/tmp/pysh_test/rm_test")
         with self.assertRaises(FileNotFoundError):
-            with open("/tmp/rm_test") as infile:
+            with open("/tmp/rm_test"):
                 pass  # no need to do anything
 
     def test_find(self):
         cd("/tmp/pysh_test")
-        results = set(list(find(".", name="test.*")))
+        results = set(find(".", name="test.*"))
         self.assertEqual(results,
-                         set("/tmp/pysh_test/A/B/test1 /tmp/pysh_test/A/B/C/test2 /tmp/pysh_test/A/B/D/test3 /tmp/pysh_test/A/test4.test /tmp/pysh_test/A/B/D/testy".split()))
-        results = set(list(find(".", name=".*\.test")))
-        self.assertEqual(results, set("/tmp/pysh_test/A/test4.test".split()))
+                         {'/tmp/pysh_test/A/B/test1', '/tmp/pysh_test/A/B/C/test2', '/tmp/pysh_test/A/test4.test',
+                          '/tmp/pysh_test/A/B/D/testy', '/tmp/pysh_test/A/B/D/test3'})
+        results = set(find(".", name=".*\.test"))
+        self.assertEqual(results, {"/tmp/pysh_test/A/test4.test"})
         cd("/tmp")
-        results = set(list(find("/tmp/pysh_test", name=".*\.py")))
-        self.assertEqual(results, set("/tmp/pysh_test/x/y/bar.py".split()))
-        results = set(list(find("/tmp/pysh_test", name="B")))
-        self.assertEqual(results, set("/tmp/pysh_test/A/B".split()))
-        results = set(list(find("pysh_test", name="B", file_type="file")))
+        results = set(find("/tmp/pysh_test", name=r".*\.py"))
+        self.assertEqual(results, {'/tmp/pysh_test/x/y/bar.py'})
+        results = set(find("/tmp/pysh_test", name=re.compile(r".*\.py")))
+        self.assertEqual(results, {'/tmp/pysh_test/x/y/bar.py'})
+        results = set(find("/tmp/pysh_test", name="B"))
+        self.assertEqual(results, {'/tmp/pysh_test/A/B'})
+        results = set(find("pysh_test", name="B", file_type="file"))
         self.assertEqual(results, set())
+        # test skip_hidden
 
-# brakuje mv, touch, mkdir
+# TODO: mv, touch, mkdir
