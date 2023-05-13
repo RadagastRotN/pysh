@@ -42,6 +42,8 @@ def ls(flags=NO_FLAGS, dirname=None, only_dirs=False, only_files=False):
     only_dirs - list subdirectories onlu
     only_files - list only files, ommiting subdiretories and special files (links, pipes and so on)
     """
+    if type(flags) is str and dirname is None:
+        dirname, flags = flags, NO_FLAGS
     if dirname is None:
         dirname = _working_dir
     if Flags.R not in flags:
