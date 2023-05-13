@@ -1,7 +1,8 @@
 from .generator import pipe_from_func, make_pipe, make_drain, make_source
 from .main import (sort, uniq, grep, cut, wc,
                    rev, sed,
-                   comm,
+                   comm, diff,
+                   head,
                    Flags
                    )
 from .file_utils import ls, cd, rm, mv, pwd, touch, mkdir, find
