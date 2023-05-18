@@ -86,3 +86,26 @@ class PyshTest(unittest.TestCase):
         self.assertEqual(result, [(None, None, 1), (2, None, None), (None, 3, None), (None, None, 4), (None, 5, None)])
         result = list(comm(cat_list([1, 2, 4]), cat_list([1, 3, 4, 5]), suppress="12"))
         self.assertEqual(result, [1, 4])
+
+    def test_diff(self):
+        self.assertEqual(diff("abc", "abcd", start_num=1), ['3a4', '> d'])
+        self.assertEqual(diff("abcd", "abc", start_num=1), ['4d3', '< d'])
+        self.assertEqual(diff("abxyc", "abc", start_num=1), ['3,4d2', '< x', '< y'])
+        self.assertEqual(diff("axbc", "abyc", start_num=1), ['2d1', '< x', '3a3', '> y'])
+        self.assertEqual(diff("axbc", "ayzbc", start_num=1), ['2c2,3', '< x', '> y', '> z'])
+        self.assertEqual(diff(['aa', 'bb', 'cde'], ['bb', 'cdf'], start_num=1),
+                         ['1d0', '< aa', '3c2', '< cde', '> cdf'])
+        self.assertEqual(diff(['bb', 'cdf'], ['aa', 'bb', 'cde'], start_num=1),
+                         ['0a1', '> aa', '2c3', '< cdf', '> cde'])
+
+    def test_head(self):
+        self.assertEqual(list(iter(range(100)) | head()), list(range(10)))
+        self.assertEqual(list(iter(range(100)) | head(-10)), list(range(90)))
+        self.assertEqual(list(iter(range(100)) | head(5)), list(range(5)))
+        self.assertEqual(list(iter(range(100)) | head(-5)), list(range(95)))
+
+    def test_tail(self):
+        self.assertEqual(list(iter(range(100)) | tail()), list(range(90, 100)))
+        self.assertEqual(list(iter(range(100)) | tail(-10)), list(range(10, 100)))
+        self.assertEqual(list(iter(range(100)) | tail(5)), list(range(95, 100)))
+        self.assertEqual(list(iter(range(100)) | tail(-5)), list(range(5, 100)))

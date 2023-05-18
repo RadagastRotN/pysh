@@ -1,5 +1,6 @@
 import re
 from collections import deque
+from difflib import SequenceMatcher
 from enum import Flag, auto
 from operator import itemgetter
 
@@ -328,38 +329,25 @@ def comm(gen1, gen2, suppress=""):
     yield from filter_nones(inner_gen())
 
 
-def diff(seq1, seq2, flags=NO_FLAGS):
+def diff(seq1, seq2, flags=NO_FLAGS, start_num=0):
     seq1 = list(seq1)
     seq2 = list(seq2)
-    table = [[0] * (len(seq1) + 1) for _ in range(len(seq2) + 1)]
-    for i in range(len(seq1) + 1):
-        table[0][i] = (i, (0, i - 1))
-    for j in range(len(seq2) + 1):
-        table[j][0] = (j, (j - 1, 0))
-    for i in range(1, len(seq1) + 1):
-        for j in range(1, len(seq2) + 1):
-            table[j][i] = min((table[j - 1][i - 1][0] + (seq1[i - 1] != seq2[j - 1]), (j - 1, i - 1)),
-                              (table[j - 1][i][0] + 1, (j - 1, i)),
-                              (table[j][i - 1][0] + 1, (j, i - 1)),
-                              )
-
-    active_node = (len(seq2), len(seq1))
-    path = [active_node]
     result = []
-
-    while active_node != (0, 0):
-        active_node = table[active_node[0]][active_node[1]][1]
-        path += [active_node]
-    path = path[::-1]
-    for pred, succ in zip(path[:-1], path[1:]):
-        if succ[0] > pred[0] and succ[1] > pred[1]:
-            if seq1[pred[1]] != seq2[pred[0]]:
-                result += ["{}c{} < {} > {}".format(pred[0] + 1, pred[1] + 1, seq1[pred[1]], seq2[pred[0]])]
-        elif succ[0] > pred[0]:
-            result += ["{}a{} > {}".format(pred[0], pred[1] + 1, seq2[pred[0]])]  # 2a3 means after line 2 add an element which has number 3 in the other
-        elif succ[1] > pred[1]:
-            result += ["{}d{} < {}".format(pred[0] + 1, pred[1], seq1[pred[1]])]
-    return table[-1][-1][0], result
+    matcher = SequenceMatcher(a=seq1, b=seq2)
+    opcodes = matcher.get_opcodes()
+    for opcode in opcodes:
+        opcode = list(opcode)
+        if opcode[0] == 'equal':
+            continue  # nothing to do
+        op = {'insert': 'a', 'delete': 'd', 'replace': 'c'}[opcode[0]]
+        left = str(opcode[1] + start_num - int(op=="a")) if opcode[2] - 1 <= opcode[1] else '{},{}'.format(opcode[1]+start_num, opcode[2]-1+start_num)
+        right = str(opcode[3] + start_num - int(op=="d")) if opcode[4] - 1 <= opcode[3] else '{},{}'.format(opcode[3]+start_num, opcode[4]-1+start_num)
+        result += ["{}{}{}".format(left, op, right)]
+        if op in 'dc':
+            result += ["< " + seq1[i] for i in range(opcode[1], opcode[2])]
+        if op in 'ac':
+            result += ["> " + seq2[i] for i in range(opcode[3], opcode[4])]
+    return result
 
 
 @make_pipe
@@ -371,18 +359,28 @@ def head(source, n=10):
             yield next(source)
             n -= 1
     else:
-        while n:
-            next(source)
-            n -= 1
-        yield from source
+        n = -n
+        queue = deque()
+        for line in source:
+            queue.append(line)
+            if len(queue) > n:
+                yield queue.popleft()
 
 
 @make_pipe
 def tail(source, n=10):
-    assert n >= 0
-    buffer = deque()
-    for elem in source:
-        buffer.append(elem)
-        if len(buffer) > n:
-            buffer.popleft()
-    yield from buffer
+    if n == 0:
+        return
+    elif n > 0:
+        buffer = deque()
+        for elem in source:
+            buffer.append(elem)
+            if len(buffer) > n:
+                buffer.popleft()
+        yield from buffer
+    else:
+        n = -n
+        while n:
+            next(source)
+            n -= 1
+        yield from source
