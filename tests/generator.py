@@ -1,6 +1,6 @@
 import unittest
 
-from pysh import pipe_from_func, cat_list, make_pipe, make_drain
+from pysh import pipe_from_func, cat_list, make_pipe, make_drain, tail, head, to_list, make_source
 
 
 class GeneratorTest(unittest.TestCase):
@@ -12,6 +12,8 @@ class GeneratorTest(unittest.TestCase):
         to_int = pipe_from_func(int)
         sqr = pipe_from_func(lambda x: x ** 2)
         self.assertEqual(list(cat_list(['1', '2', '13']) | to_int() | sqr()), [1, 4, 169])
+        self.assertEqual(list(cat_list(['1', '2', '13']) | int | sqr()), [1, 4, 169])
+        self.assertEqual(list(cat_list(['1', '2', '13']) | int | (lambda x: x ** 2)), [1, 4, 169])
 
     def test_piping(self):
         lower = pipe_from_func(str.lower)
@@ -51,4 +53,27 @@ class GeneratorTest(unittest.TestCase):
         self.assertEqual(res, [1, 2, 3, 4])
 
     def test_source(self):
-        ...  # TODO
+        def squares():
+            yield 1
+            yield 4
+            yield 9
+            yield 16
+
+        self.assertEqual(squares() | to_list(), [1, 4, 9, 16])
+
+        @make_source
+        def squares():
+            yield 1
+            yield 4
+            yield 9
+            yield 16
+
+        self.assertEqual(squares() | (lambda x: x*2) | to_list(), [2, 8, 18, 32])
+
+        def squares2():
+            return [1, 4, 9, 16]
+
+        self.assertEqual(squares2() | to_list(), [1, 4, 9, 16])
+
+    def test_concatenation(self):
+        self.assertEqual((range(100) | head(3)) + (range(100) | tail(3)) | to_list(), [0, 1, 2, 97, 98, 99])

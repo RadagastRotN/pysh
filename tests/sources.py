@@ -12,7 +12,7 @@ class SourcesTest(unittest.TestCase):
     def tearDown(self) -> None:
         rm("/tmp/pysh_cat_test")
 
-    def test_cat(self):
+    def test_cat(self):  # TODO: with_len
         content = list(cat("/tmp/pysh_cat_test"))
         self.assertEqual(content, ["a", "b", "cde", "bde", ""])
 

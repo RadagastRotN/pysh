@@ -5,7 +5,7 @@ from .generator import make_drain
 
 @make_drain
 def to_list(source):
-    return list(elem for elem in source)  # generator expression avoids calling len
+    return list(source)
 
 
 @make_drain

@@ -13,6 +13,9 @@ class FileUtilsTest(unittest.TestCase):
         mkdir("/tmp/pysh_test/x/y")
         mkdir("/tmp/pysh_test/A/B/C")
         mkdir("/tmp/pysh_test/A/B/D/testy")
+        touch("/tmp/pysh_test/foo/.hidden1")
+        touch("/tmp/pysh_test/foo/.hidden2")
+        touch("/tmp/pysh_test/foo/bar/.hidden3")
         touch("/tmp/pysh_test/foo/bar/baz/xyz.txt")
         touch("/tmp/pysh_test/x/y/foo.txt")
         touch("/tmp/pysh_test/x/y/bar.py")
@@ -47,8 +50,18 @@ class FileUtilsTest(unittest.TestCase):
     def test_ls(self):
         self.assertEqual(set(ls(dirname="/tmp/pysh_test/", only_dirs=True)), {'A', 'foo', 'x'})
         self.assertEqual(set(ls(dirname="/tmp/pysh_test/A/B")), {'test1', 'C', 'D'})
+        self.assertEqual(set(ls(Flags.R, "/tmp/pysh_test/A/B")),
+                         {'/tmp/pysh_test/A/B/C', '/tmp/pysh_test/A/B/D', '/tmp/pysh_test/A/B/test1',
+                          '/tmp/pysh_test/A/B/C/test2', '/tmp/pysh_test/A/B/D/testy', '/tmp/pysh_test/A/B/D/test3'
+                          })
+        self.assertEqual(set(ls(dirname="/tmp/pysh_test/A/B", only_files=True)), {'test1'})
         with cd("/tmp/pysh_test/A/B"):
             self.assertEqual(set(ls()), {'test1', 'C', 'D'})
+        self.assertEqual(set(ls("/tmp/pysh_test/A/B")), {'test1', 'C', 'D'})
+        self.assertEqual(set(ls("/tmp/pysh_test/A/B", Flags.R)),
+                         {'/tmp/pysh_test/A/B/C', '/tmp/pysh_test/A/B/D', '/tmp/pysh_test/A/B/test1',
+                          '/tmp/pysh_test/A/B/C/test2', '/tmp/pysh_test/A/B/D/testy', '/tmp/pysh_test/A/B/D/test3'
+                          })
 
     def test_rm(self):
         with open("/tmp/pysh_test/rm_test", "w") as outfile:
@@ -58,7 +71,24 @@ class FileUtilsTest(unittest.TestCase):
             with open("/tmp/rm_test"):
                 pass  # no need to do anything
 
-    def test_find(self):
+        mkdir("/tmp/pysh_test/rm_test")
+        mkdir("/tmp/pysh_test/rm_test/inner")
+        mkdir("/tmp/pysh_test/rm_test/file1")
+        mkdir("/tmp/pysh_test/rm_test/inner/file2")
+        self.assertTrue('/tmp/pysh_test/rm_test/inner' in set(ls('/tmp/pysh_test', Flags.R)))
+        self.assertTrue('/tmp/pysh_test/rm_test/inner/file2' in set(ls('/tmp/pysh_test', Flags.R)))
+
+        rm('/tmp/pysh_test/rm_test', Flags.R)
+        with self.assertRaises(FileNotFoundError):
+            open("/tmp/rm_test/file1")
+        self.assertFalse('/tmp/pysh_test/rm_test/inner' in set(ls('/tmp/pysh_test', Flags.R)))
+        self.assertFalse('/tmp/pysh_test/rm_test/inner/file2' in set(ls('/tmp/pysh_test', Flags.R)))
+
+        with self.assertRaises(FileNotFoundError):
+            rm('/tmp/pysh_test/not_existing_file')
+        rm('/tmp/pysh_test/not_existing_file', Flags.F)
+
+    def test_find(self):  # TODO: file_type other than "file"
         cd("/tmp/pysh_test")
         results = set(find(".", name="test.*"))
         self.assertEqual(results,
@@ -75,6 +105,10 @@ class FileUtilsTest(unittest.TestCase):
         self.assertEqual(results, {'/tmp/pysh_test/A/B'})
         results = set(find("pysh_test", name="B", file_type="file"))
         self.assertEqual(results, set())
-        # test skip_hidden
+        results = set(find("pysh_test/foo/", file_type="file"))
+        self.assertEqual(results, {'/tmp/pysh_test/foo/.hidden1', '/tmp/pysh_test/foo/.hidden2', '/tmp/pysh_test/foo/bar/.hidden3','/tmp/pysh_test/foo/bar/baz/xyz.txt'})
+        results = set(find("pysh_test/foo/", file_type="file", skip_hidden=True))
+        self.assertEqual(results, {'/tmp/pysh_test/foo/bar/baz/xyz.txt'})
 
-# TODO: mv, touch, mkdir
+
+# TODO: mv, cp, touch, mkdir, du, df?

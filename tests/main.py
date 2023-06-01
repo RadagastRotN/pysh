@@ -19,7 +19,7 @@ class PyshTest(unittest.TestCase):
     def test_rev(self):
         self.assertEqual(list(cat_list(['abc', 'def', 'aaa']) | rev()), ['cba', 'fed', 'aaa'])
 
-    def test_grep(self):
+    def test_grep(self):  # TODO: start_num
         result = list(cat("/tmp/pysh_cat_test") | grep("b"))
         self.assertEqual(result, ["b", "bde"])
         result = list(cat("/tmp/pysh_cat_test") | grep("de"))
@@ -72,6 +72,11 @@ class PyshTest(unittest.TestCase):
         self.assertEqual(
             list(cat_list(['a.b.c.d.e', 'x.y.z.ź.ż', 'i.j.k.l.m']) | cut(delimiter=".", fields="1,3-4")),
             [["a", "c", "d"], ["x", "z", "ź"], ["i", "k", "l"]])
+        with self.assertRaises(ValueError):
+            list(cat_list(['a b c', 'd e f', 'g h']) | cut("2,3"))
+
+        result = list(cat_list(['a b c', 'd e f', 'g h']) | cut('2,3', skip_errors=True))
+        self.assertEqual(result, [['b', 'c'], ['e', 'f'], ['h']])
 
     def test_wc(self):
         cat_list(['a', 'b', 'c', 'd', 'efgh\t1', 'x']) | to_file("/tmp/pysh_test/wc_test")
@@ -81,7 +86,7 @@ class PyshTest(unittest.TestCase):
         self.assertEqual(wc("/tmp/pysh_test/wc_test", Flags.W | Flags.L), (7, 6))
         self.assertEqual(tuple(cat("/tmp/pysh_test/wc_test") | wc()), (11, 7, 6))
 
-    def test_comm(self):
+    def test_comm(self):  # TODO: not sorted input
         result = list(comm(cat_list([1, 2, 4]), cat_list([1, 3, 4, 5])))
         self.assertEqual(result, [(None, None, 1), (2, None, None), (None, 3, None), (None, None, 4), (None, 5, None)])
         result = list(comm(cat_list([1, 2, 4]), cat_list([1, 3, 4, 5]), suppress="12"))
@@ -97,15 +102,17 @@ class PyshTest(unittest.TestCase):
                          ['1d0', '< aa', '3c2', '< cde', '> cdf'])
         self.assertEqual(diff(['bb', 'cdf'], ['aa', 'bb', 'cde'], start_num=1),
                          ['0a1', '> aa', '2c3', '< cdf', '> cde'])
+        self.assertEqual(diff("abc", "abcd"), ['2a3', '> d'])
+        self.assertEqual(diff("axbc", "abyc"), ['1d0', '< x', '2a2', '> y'])
 
     def test_head(self):
-        self.assertEqual(list(iter(range(100)) | head()), list(range(10)))
-        self.assertEqual(list(iter(range(100)) | head(-10)), list(range(90)))
-        self.assertEqual(list(iter(range(100)) | head(5)), list(range(5)))
-        self.assertEqual(list(iter(range(100)) | head(-5)), list(range(95)))
+        self.assertEqual(list(range(100) | head()), list(range(10)))
+        self.assertEqual(list(range(100) | head(-10)), list(range(90)))
+        self.assertEqual(list(range(100) | head(5)), list(range(5)))
+        self.assertEqual(list(range(100) | head(-5)), list(range(95)))
 
     def test_tail(self):
-        self.assertEqual(list(iter(range(100)) | tail()), list(range(90, 100)))
-        self.assertEqual(list(iter(range(100)) | tail(-10)), list(range(10, 100)))
-        self.assertEqual(list(iter(range(100)) | tail(5)), list(range(95, 100)))
-        self.assertEqual(list(iter(range(100)) | tail(-5)), list(range(5, 100)))
+        self.assertEqual(list(range(100) | tail()), list(range(90, 100)))
+        self.assertEqual(list(range(100) | tail(-10)), list(range(10, 100)))
+        self.assertEqual(list(range(100) | tail(5)), list(range(95, 100)))
+        self.assertEqual(list(range(100) | tail(-5)), list(range(5, 100)))
