@@ -30,7 +30,20 @@ class Generator(PipeElement):
             self._gen = iter(gen)
         else:
             self._gen = self.gen()
-        self.source = None
+        self._source = None
+
+    @property
+    def source(self):
+        return self._source
+
+    @source.setter
+    def source(self, src):
+        if "__next__" in dir(src):
+            self._source = src
+        elif "__iter__" in dir(src):
+            self._source = iter(src)
+        else:
+            raise TypeError("Source needs to be iterable")
 
     def __iter__(self):
         return self
@@ -40,7 +53,6 @@ class Generator(PipeElement):
 
     def __ror__(self, other):
         self.source = other
-        # print(self.source)
         return self
 
     def __or__(self, other):
@@ -117,12 +129,25 @@ def make_pipe(len_):
 
             def gen(self):
                 if self.source is not None:
-                    yield from (elem for elem in func(self.source, *self.args, **self.kwargs))
+                    try:
+                        yield from (elem for elem in func(self.source, *self.args, **self.kwargs))
+                    except StopIteration:
+                        return
                 else:
-                    yield from (elem for elem in func(*self.args, **self.kwargs))
+                    if "__iter__" in dir(self.args[0]):
+                        self.args = (iter(self.args[0]),) + self.args[1:]
+                    try:
+                        yield from (elem for elem in func(*self.args, **self.kwargs))
+                    except StopIteration:
+                        return
 
             def __call__(self, source, *args, **kwargs):
-                yield from (elem for elem in func(source, *self.args, **self.kwargs))
+                if '__iter__' in dir(source):
+                    source = iter(source)
+                try:
+                    yield from (elem for elem in func(source, *self.args, **self.kwargs))
+                except StopIteration:
+                    return
 
         return decorator
 
