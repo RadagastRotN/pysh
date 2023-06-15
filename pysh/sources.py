@@ -6,7 +6,7 @@ from pysh.generator import make_source, generator
 def cat(filename, with_len=False):
     """Generates all content from given file line by line, stripping newline characters"""
     if with_len:
-        _len = wc(filename, Flags.L)
+        _len = wc(filename, Flags.L)[0]
     else:
         _len = None
     filename = _to_absolute(filename)
