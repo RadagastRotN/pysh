@@ -42,21 +42,28 @@ def ls(flags=NO_FLAGS, dirname=None, only_dirs=False, only_files=False):
     only_dirs - list subdirectories onlu
     only_files - list only files, ommiting subdiretories and special files (links, pipes and so on)
     """
-    if type(flags) is str and dirname is None:
-        dirname, flags = flags, NO_FLAGS
+    if type(flags) is str and (dirname is None or type(dirname) is Flags):
+        dirname, flags = flags, dirname
+    if flags is None:
+        flags = NO_FLAGS
     if dirname is None:
         dirname = _working_dir
+    dir_path = _to_path(dirname)
+    if not dir_path.exists():
+        raise FileNotFoundError('No such directory \'{}\'.'.format(dir_path))
+    if not dir_path.is_dir():
+        raise ValueError("'{}' is not a directory.".format(dir_path))
     if Flags.R not in flags:
-        for dirpath, dirnames, filenames in os.walk(dirname):
+        for dirpath, dirnames, filenames in os.walk(dir_path):
             if not only_files:
                 yield from dirnames
             if not only_dirs:
                 yield from filenames
             break
     else:
-        for dirpath, dirnames, filenames in os.walk(dirname):
+        for dirpath, dirnames, filenames in os.walk(dir_path):
             if not only_files:
-                yield from dirnames
+                yield from (os.path.join(dirpath, dirname) for dirname in dirnames)
             if not only_dirs:
                 yield from (os.path.join(dirpath, fname) for fname in filenames)
 
@@ -133,7 +140,7 @@ def df(partition=None):
 
 def du(path):
     """Calculates disk usage by given file or directory"""
-    path = Path(path)
+    path = _to_path(path)
     if path.is_file():
         return path.stat().st_size
     elif path.is_dir():
@@ -168,7 +175,7 @@ def find(path, name="", file_type=None, skip_hidden=False):
     Finds files on disk using given criteria.
     Criteria may include:
     name - matches if the filename contains given string or matches given regex;
-    filetype - f for regular file, d for directory, l for link;
+    filetype - file, dir or link
     """
 
     @make_pipe
@@ -201,11 +208,29 @@ def find(path, name="", file_type=None, skip_hidden=False):
     return result
 
 
+def _to_path(path):
+    """Returns Path object for given path, optionally expanding tilde"""
+    if str(path).startswith("~"):  # in case path is Path
+        path = os.environ['HOME'] + str(path)[1:]
+    return Path(path)
+
+
 def _to_absolute(path):
     """Returns absolute path of any given path"""
-    path = Path(path)
+    path = _to_path(path)
     if path.is_absolute():
         return path
     else:
         return Path(os.path.join(_working_dir,
                                  path)).absolute()  # could simply return Path(path).absolute, but it doesn't work with cd
+
+
+VAR_RE = re.compile(r'(\$(?:\w+|{\w+}))')
+
+
+def _expand_env_vars(s):
+    env_vars = set(VAR_RE.findall(s))
+    env_vars = {varname: os.environ.get(varname.strip('${}'), '') for varname in sorted(env_vars, key=len, reverse=True)}
+    for varname, value in env_vars.items():
+        s = s.replace(varname, value)
+    return s
