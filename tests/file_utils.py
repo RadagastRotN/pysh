@@ -1,7 +1,11 @@
 import re
+import re
 import unittest
+from random import choice
+from string import ascii_lowercase
 
-from pysh import cd, pwd, find, ls, rm, mkdir, touch, Flags
+from pysh import cd, pwd, find, ls, rm, mkdir, touch, Flags, cat, to_list, cat_list, to_file, mv
+from pysh.file_utils import cp, du
 
 
 class FileUtilsTest(unittest.TestCase):
@@ -28,6 +32,18 @@ class FileUtilsTest(unittest.TestCase):
     def tearDown(self) -> None:
         rm("/tmp/pysh_test/", Flags.R)
         rm("/tmp/pysh_cat_test")
+
+    def test_touch(self):
+        with self.assertRaises(FileNotFoundError):
+            list(cat('/tmp/pysh_test/foo/bar/baz/spam'))
+        touch('/tmp/pysh_test/foo/bar/baz/spam')
+        self.assertEqual(list(cat('/tmp/pysh_test/foo/bar/baz/spam')), [])
+
+    def test_mkdir(self):
+        with self.assertRaises(FileNotFoundError):
+            list(ls('/tmp/pysh_test/foo/bar/baz/spim'))
+        mkdir('/tmp/pysh_test/foo/bar/baz/spim')
+        self.assertEqual(ls('/tmp/pysh_test/foo/bar/baz/spim') | to_list(), [])
 
     def test_cd_and_pwd(self):
         cd("/tmp/pysh_test")
@@ -88,7 +104,7 @@ class FileUtilsTest(unittest.TestCase):
             rm('/tmp/pysh_test/not_existing_file')
         rm('/tmp/pysh_test/not_existing_file', Flags.F)
 
-    def test_find(self):  # TODO: file_type other than "file"
+    def test_find(self):
         cd("/tmp/pysh_test")
         results = set(find(".", name="test.*"))
         self.assertEqual(results,
@@ -105,10 +121,64 @@ class FileUtilsTest(unittest.TestCase):
         self.assertEqual(results, {'/tmp/pysh_test/A/B'})
         results = set(find("pysh_test", name="B", file_type="file"))
         self.assertEqual(results, set())
+        results = set(find("pysh_test", name="B", file_type="dir"))
+        self.assertEqual(results, {'/tmp/pysh_test/A/B'})
         results = set(find("pysh_test/foo/", file_type="file"))
-        self.assertEqual(results, {'/tmp/pysh_test/foo/.hidden1', '/tmp/pysh_test/foo/.hidden2', '/tmp/pysh_test/foo/bar/.hidden3','/tmp/pysh_test/foo/bar/baz/xyz.txt'})
+        self.assertEqual(results, {'/tmp/pysh_test/foo/.hidden1', '/tmp/pysh_test/foo/.hidden2',
+                                   '/tmp/pysh_test/foo/bar/.hidden3', '/tmp/pysh_test/foo/bar/baz/xyz.txt'})
+        results = set(find("pysh_test/foo/", file_type="dir"))
+        self.assertEqual(results, {'/tmp/pysh_test/foo/bar', '/tmp/pysh_test/foo/bar/baz'})
         results = set(find("pysh_test/foo/", file_type="file", skip_hidden=True))
         self.assertEqual(results, {'/tmp/pysh_test/foo/bar/baz/xyz.txt'})
 
+    def test_mv(self):
+        original = ['a', 'b', 'c', 'd']
+        cat_list(original) | to_file('/tmp/pysh_test/mv_test')
+        with self.assertRaises(FileNotFoundError):
+            list(cat('/tmp/pysh_test/test_mv'))
+        mv('/tmp/pysh_test/mv_test', '/tmp/pysh_test/test_mv')
+        self.assertEqual(list(cat('/tmp/pysh_test/test_mv')), original)
+        with self.assertRaises(FileNotFoundError):
+            list(cat('/tmp/pysh_test/mv_test'))
 
-# TODO: mv, cp, touch, mkdir, du, df?
+        original = ['a', 'b', 'c', 'd']
+        cat_list(original) | to_file('/tmp/pysh_test/mv_test')
+        with self.assertRaises(FileNotFoundError):
+            list(cat('/tmp/pysh_test/A/B/D/test_mv'))
+        with cd('/tmp/pysh_test'):
+            mv('mv_test', 'A/B/D/test_mv')
+        self.assertEqual(list(cat('/tmp/pysh_test/A/B/D/test_mv')), original)
+        with self.assertRaises(FileNotFoundError):
+            list(cat('/tmp/pysh_test/mv_test'))
+
+    def test_cp(self):
+        original = ['a', 'b', 'c', 'd']
+        cat_list(original) | to_file('/tmp/pysh_test/cp_test')
+        with self.assertRaises(FileNotFoundError):
+            list(cat('/tmp/pysh_test/test_cp'))
+        cp('/tmp/pysh_test/cp_test', '/tmp/pysh_test/test_cp')
+        self.assertEqual(list(cat('/tmp/pysh_test/test_cp')), original)
+        self.assertEqual(list(cat('/tmp/pysh_test/cp_test')), original)
+
+        original = ['a', 'b', 'c', 'd']
+        cat_list(original) | to_file('/tmp/pysh_test/cp_test')
+        with self.assertRaises(FileNotFoundError):
+            list(cat('/tmp/pysh_test/A/B/D/test_cp'))
+        with cd('/tmp/pysh_test'):
+            cp('cp_test', 'A/B/D/test_cp')
+        self.assertEqual(list(cat('/tmp/pysh_test/A/B/D/test_cp')), original)
+        self.assertEqual(list(cat('/tmp/pysh_test/cp_test')), original)
+
+    def test_mkdir(self):
+        with self.assertRaises(FileNotFoundError):
+            list(ls('/tmp/pysh_test/mkdir_test'))
+        mkdir('/tmp/pysh_test/mkdir_test')
+        self.assertEqual(list(ls('/tmp/pysh_test/mkdir_test')), [])
+
+    def test_du(self):
+        cat_list(["abecadło", "Ala ma kota", 'xyz' * 100]) | to_file('/tmp/pysh_test/du_test')
+        self.assertEqual(du('/tmp/pysh_test/du_test'), 323)
+        cat_list([''.join([choice(ascii_lowercase) for _ in range(9876)])]) | to_file('/tmp/pysh_test/du_test')
+        self.assertEqual(du('/tmp/pysh_test/du_test'), 9877)
+
+# TODO: df?

@@ -19,7 +19,7 @@ class PyshTest(unittest.TestCase):
     def test_rev(self):
         self.assertEqual(list(cat_list(['abc', 'def', 'aaa']) | rev()), ['cba', 'fed', 'aaa'])
 
-    def test_grep(self):  # TODO: start_num
+    def test_grep(self):
         result = list(cat("/tmp/pysh_cat_test") | grep("b"))
         self.assertEqual(result, ["b", "bde"])
         result = list(cat("/tmp/pysh_cat_test") | grep("de"))
@@ -32,6 +32,8 @@ class PyshTest(unittest.TestCase):
         self.assertEqual(result, [(0, "abc"), (2, "bCd"), (5, "BCD")])
         result = list(cat_list(['abc', 'bcd', 'deef']) | grep(re.compile(r"[ea]+"), Flags.V))
         self.assertEqual(result, ["bcd"])
+        result = list(cat_list(['abc', 'cde', 'bCd', 'bof', 'xxx', 'BCD']) | grep("Bc", Flags.N | Flags.I, start_num=1))
+        self.assertEqual(result, [(1, "abc"), (3, "bCd"), (6, "BCD")])
 
     def test_uniq(self):
         result = list(cat_list(['a', 'a', 'b', 'b', 'b', 'c', 'd', 'ee', 'ee', 'ee', 'f', 'ff', 'a']) | uniq())
@@ -86,11 +88,13 @@ class PyshTest(unittest.TestCase):
         self.assertEqual(wc("/tmp/pysh_test/wc_test", Flags.W | Flags.L), (7, 6))
         self.assertEqual(tuple(cat("/tmp/pysh_test/wc_test") | wc()), (11, 7, 6))
 
-    def test_comm(self):  # TODO: not sorted input
+    def test_comm(self):
         result = list(comm(cat_list([1, 2, 4]), cat_list([1, 3, 4, 5])))
         self.assertEqual(result, [(None, None, 1), (2, None, None), (None, 3, None), (None, None, 4), (None, 5, None)])
         result = list(comm(cat_list([1, 2, 4]), cat_list([1, 3, 4, 5]), suppress="12"))
         self.assertEqual(result, [1, 4])
+        with self.assertRaises(ValueError):
+            list(comm(cat_list([1, 4, 2]), cat_list([1, 2, 4]), suppress="12"))
 
     def test_diff(self):
         self.assertEqual(diff("abc", "abcd", start_num=1), ['3a4', '> d'])
