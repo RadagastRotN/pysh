@@ -129,25 +129,16 @@ def make_pipe(len_):
 
             def gen(self):
                 if self.source is not None:
-                    try:
-                        yield from (elem for elem in func(self.source, *self.args, **self.kwargs))
-                    except StopIteration:
-                        return
+                    yield from func(self.source, *self.args, **self.kwargs)
                 else:
                     if "__iter__" in dir(self.args[0]):
                         self.args = (iter(self.args[0]),) + self.args[1:]
-                    try:
-                        yield from (elem for elem in func(*self.args, **self.kwargs))
-                    except StopIteration:
-                        return
+                    yield from func(*self.args, **self.kwargs)
 
             def __call__(self, source, *args, **kwargs):
                 if '__iter__' in dir(source):
                     source = iter(source)
-                try:
-                    yield from (elem for elem in func(source, *self.args, **self.kwargs))
-                except StopIteration:
-                    return
+                yield from func(source, *self.args, **self.kwargs)
 
         return decorator
 
@@ -171,7 +162,7 @@ def make_source(len_):
                     self.kwargs = kwargs
 
                 def gen(self):
-                    yield from (elem for elem in func(*self.args, **self.kwargs))
+                    yield from func(*self.args, **self.kwargs)
 
             return decorator
         return inner(len_)
