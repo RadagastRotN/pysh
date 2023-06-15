@@ -3,6 +3,7 @@ from collections import deque
 from difflib import SequenceMatcher
 from enum import Flag, auto
 from operator import itemgetter
+from warnings import warn
 
 from .generator import Generator, PipeElement, make_pipe, pipe_from_func
 
@@ -170,9 +171,10 @@ class cut(Generator):
     parts may be selected both as ranges (e.g. 2-4) or list (e.g. 1,3) or both (e.g. 1-3,5)
     """
 
-    def __init__(self, fields, delimiter=" "):
+    def __init__(self, fields, delimiter=" ", skip_errors=False):
         super().__init__()
         self.delimiter = delimiter
+        self.skip_errors = skip_errors
         if type(fields) is int:
             self.fields = {fields}
         else:
@@ -188,8 +190,11 @@ class cut(Generator):
             self.fields = sorted(set(self.fields))
 
     def gen(self):
-        for line in self.source:
-            yield list(elem for ind, elem in enumerate(line.split(self.delimiter), start=1) if ind in self.fields)
+        for line_no, line in enumerate(self.source, start=1):
+            line = line.split(self.delimiter)
+            if not self.skip_errors and max(self.fields) > len(line):
+                raise ValueError("Line {} has {} fields; {} requested.".format(line_no, len(line), max(self.fields)))
+            yield list(elem for ind, elem in enumerate(line, start=1) if ind in self.fields)
 
 
 def _wcl(filename):
@@ -284,7 +289,7 @@ class wc(PipeElement):
 
 def comm(gen1, gen2, suppress=""):
     """
-    Takes two sorted streams and outputs one column with elements unique to the forst one,
+    Takes two sorted streams and outputs one column with elements unique to the first one,
     second unique to the second one and third common for both; empty columns are filled with Nones
     Args:
         suppress - takes numbers of columns to be omitted from output; e.g. suppress=12 or "12" outputs only the third column
@@ -302,12 +307,14 @@ def comm(gen1, gen2, suppress=""):
 
     if type(suppress) is int:
         suppress = str(suppress)
-    assert not (set(suppress) - set("123")), f"Output can consist only of digits 1, 2 and 3 {set(suppress)}"
+    if set(suppress) - set("123"):
+        raise ValueError(f"Parameter 'suppress' can consist only of digits 1, 2 and 3; {suppress} given")
 
     get_output = itemgetter(*sorted({0, 1, 2} - {int(col) - 1 for col in suppress}))
 
-    # print(get_output)
-    # return
+    def validate_sorted(prev, current):
+        if current is not None and prev > current:
+            raise ValueError("The input is not sorted")
 
     def inner_gen():
         elem1, gen1_ended = get_next(gen1)
@@ -315,21 +322,53 @@ def comm(gen1, gen2, suppress=""):
         while True:
             if gen1_ended and gen2_ended:
                 break
-            elif gen1_ended or elem2 < elem1:
-                yield get_output((None, elem2, None))
+            elif gen1_ended:
+                while not gen2_ended:
+                    yield None, elem2, None
+                    prev2 = elem2
+                    elem2, gen2_ended = get_next(gen2)
+                    validate_sorted(prev2, elem2)
+                break
+            elif gen2_ended:
+                while not gen1_ended:
+                    yield elem1, None, None
+                    prev1 = elem1
+                    elem1, gen1_ended = get_next(gen1)
+                    validate_sorted(prev1, elem1)
+                break
+            elif elem2 < elem1:
+                yield None, elem2, None
+                prev2 = elem2
                 elem2, gen2_ended = get_next(gen2)
-            elif gen2_ended or elem1 < elem2:
-                yield get_output((elem1, None, None))
+                validate_sorted(prev2, elem2)
+            elif elem1 < elem2:
+                yield elem1, None, None
+                prev1 = elem1
                 elem1, gen1_ended = get_next(gen1)
+                validate_sorted(prev1, elem1)
             else:
-                yield get_output((None, None, elem1))
+                yield None, None, elem1
+                prev1, prev2 = elem1, elem2
                 elem1, gen1_ended = get_next(gen1)
                 elem2, gen2_ended = get_next(gen2)
+                validate_sorted(prev1, elem1)
+                validate_sorted(prev2, elem2)
 
-    yield from filter_nones(inner_gen())
+
+    yield from filter_nones(get_output(elem) for elem in inner_gen())
 
 
 def diff(seq1, seq2, flags=NO_FLAGS, start_num=0):
+    """
+    Compares two sequences and returns the list of differences
+    :param seq1: first sequence or generator to compare
+    :param seq2: second sequence or generator to compare
+    :param flags: currently ignored
+    :param start_num: whether indexing of sequence elements should be zero-based (default) or one-based, or any other number
+    :return: list of differences in standard diff format
+    """
+    if flags != NO_FLAGS:
+        warn("diff currently doesn't support any flags")
     seq1 = list(seq1)
     seq2 = list(seq2)
     result = []
@@ -340,8 +379,10 @@ def diff(seq1, seq2, flags=NO_FLAGS, start_num=0):
         if opcode[0] == 'equal':
             continue  # nothing to do
         op = {'insert': 'a', 'delete': 'd', 'replace': 'c'}[opcode[0]]
-        left = str(opcode[1] + start_num - int(op=="a")) if opcode[2] - 1 <= opcode[1] else '{},{}'.format(opcode[1]+start_num, opcode[2]-1+start_num)
-        right = str(opcode[3] + start_num - int(op=="d")) if opcode[4] - 1 <= opcode[3] else '{},{}'.format(opcode[3]+start_num, opcode[4]-1+start_num)
+        left = str(opcode[1] + start_num - int(op == "a")) if opcode[2] - 1 <= opcode[1] else '{},{}'.format(
+            opcode[1] + start_num, opcode[2] - 1 + start_num)
+        right = str(opcode[3] + start_num - int(op == "d")) if opcode[4] - 1 <= opcode[3] else '{},{}'.format(
+            opcode[3] + start_num, opcode[4] - 1 + start_num)
         result += ["{}{}{}".format(left, op, right)]
         if op in 'dc':
             result += ["< " + seq1[i] for i in range(opcode[1], opcode[2])]
@@ -352,6 +393,7 @@ def diff(seq1, seq2, flags=NO_FLAGS, start_num=0):
 
 @make_pipe
 def head(source, n=10):
+    """Returns first n elements of given sequence. If n is negative returns everything BUT last |n| elements."""
     if n == 0:
         return
     elif n > 0:
@@ -369,6 +411,7 @@ def head(source, n=10):
 
 @make_pipe
 def tail(source, n=10):
+    """Returns last n elements of given sequence. If n is negative returns everything BUT first |n| elements."""
     if n == 0:
         return
     elif n > 0:

@@ -1,4 +1,4 @@
-from .generator import pipe_from_func, make_pipe, make_drain, make_source
+from .generator import pipe_from_func, make_pipe, make_drain, make_source, generator
 from .main import (sort, uniq, grep, cut, wc,
                    rev, sed,
                    comm, diff,
