@@ -6,5 +6,5 @@ from .main import (sort, uniq, grep, cut, wc,
                    Flags
                    )
 from .file_utils import ls, cd, rm, mv, pwd, touch, mkdir, find
-from .sources import cat, cat_list
+from .sources import cat, cat_list, bz2_cat
 from .drains import echo, to_file, to_list
