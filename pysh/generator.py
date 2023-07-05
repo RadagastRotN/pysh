@@ -23,7 +23,7 @@ class Generator(PipeElement):
     plus operator concatenates the generators
     """
 
-    def __init__(self, gen=None, len=None):
+    def __init__(self, gen=None):
         if "__next__" in dir(gen):
             self._gen = gen
         elif "__iter__" in dir(gen):
@@ -123,7 +123,7 @@ def make_pipe(len_):
         class decorator(Generator):
 
             def __init__(self, *args, **kwargs):
-                super().__init__(None, len_)
+                super().__init__(None)
                 self.args = args
                 self.kwargs = kwargs
 
@@ -165,6 +165,7 @@ def make_source(len_):
                     yield from func(*self.args, **self.kwargs)
 
             return decorator
+
         return inner(len_)
     else:
         def inner(func):
@@ -180,6 +181,7 @@ def make_source(len_):
                     yield from (elem for elem in func(*self.args, **self.kwargs))
 
             return decorator
+
         return inner
 
 

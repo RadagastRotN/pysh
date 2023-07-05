@@ -172,7 +172,7 @@ class cut(Generator):
     """
 
     def __init__(self, fields, delimiter=" ", skip_errors=False):
-        super().__init__()
+        super().__init__(None)
         self.delimiter = delimiter
         self.skip_errors = skip_errors
         if type(fields) is int:
