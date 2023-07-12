@@ -74,13 +74,27 @@ class Generator(PipeElement):
 
 
 class KnownLengthGenerator(Generator):
+    # cat, cat_list, bz2_cat - cat i bz2_cat kosztowne, więc albo na prośbę użytkownika, albo wg rozmaru pliku w bajtach
+    # drains - wszystkie mogą dziedziczyć
+    # grep, comm, diff, uniq - tylko aktualizowane co wywołanie
+    # split_sequence dziedziczy (ale dzieli przez długość sekwencji)
+    # sort, cut, rev, sed - dziedziczą
+    # head, tail - prawie stałe (z dokładnością do zbyt krótkich sekwencji i ujemnych n)
+    # ls, find - nie da się/bez sensu
 
-    def __init__(self, gen=None, len=None):
+    # case 0 - inherit from source
+    # case 1 - set one length at the creation
+    # case 2 - update length at every generation
+
+    def __init__(self, gen=None, len_=None):
         super().__init__(gen)
-        self.__len = len
+        self.__len = len_
 
     def __len__(self):
-        return self.__len
+        if self.__len == 'inherit':
+            return len(self.source)
+        else:
+            return self.__len
 
 
 class GeneratorConcat(Generator):
@@ -148,37 +162,35 @@ def make_pipe(len_):
         return inner
 
 
-def make_source(len_):
+def make_source(func=None, len_=None):
     """Decorator for a function making it available for concatenation and piping"""
 
-    if "__call__" in dir(len_):
-        def inner(func):
-            # @wraps(func)
-            class decorator(Generator):
+    if len_ is None:
+        class decorator(Generator):
 
-                def __init__(self, *args, **kwargs):
-                    super().__init__(None)
-                    self.args = args
-                    self.kwargs = kwargs
+            def __init__(self, *args, **kwargs):
+                super().__init__(None)
+                self.args = args
+                self.kwargs = kwargs
 
-                def gen(self):
-                    yield from func(*self.args, **self.kwargs)
+            def gen(self):
+                yield from func(*self.args, **self.kwargs)
 
-            return decorator
-
-        return inner(len_)
+        return decorator
     else:
         def inner(func):
             # @wraps(func)
             class decorator(KnownLengthGenerator):
 
                 def __init__(self, *args, **kwargs):
-                    super().__init__(None, len_)
+                    super().__init__(None, len_(*args, **kwargs))
                     self.args = args
                     self.kwargs = kwargs
 
                 def gen(self):
                     yield from (elem for elem in func(*self.args, **self.kwargs))
+
+                # __len__ is defined in KnownLengthGenerator
 
             return decorator
 

@@ -39,6 +39,15 @@ class grep(Generator):
     N - prepend numbers
     """
 
+
+    @Generator.source.setter
+    def source(self, val):
+        Generator.source.fset(self, val)
+        try:
+            self.__len = len(val)
+        except TypeError:
+            self.__len = None
+
     def __init__(self, pattern, flags=NO_FLAGS, start_num=0):
         super().__init__(None)
         self.re = pattern
@@ -48,14 +57,30 @@ class grep(Generator):
             self.re = re.compile(self.re)
         if Flags.I in flags:
             self.re = re.compile(self.re.pattern, self.re.flags | re.IGNORECASE)
+        self.__len = None
+        self.__skipped = 0
 
     def gen(self):
+        try:
+            self.__len = len(self.source)
+        except TypeError:
+            pass  # ignore sources without len - just don't provide len
         match = (lambda x: self.re.search(x)) if Flags.V not in self.flags else (lambda x: not self.re.search(x))
         if Flags.N in self.flags:
             self.source = enumerate(self.source, start=self.start_num)
             _match = match
             match = lambda el: _match(el[1])
-        yield from (x for x in self.source if match(x))
+        for x in self.source:
+            if match(x):
+                yield x
+            elif self.__len is not None:
+                self.__len -= 1
+
+    def __len__(self):
+        if self.__len is not None:
+            return self.__len
+        else:
+            raise ValueError('This grep\'s source doesn\'t provide length.')
 
 
 class uniq(Generator):
@@ -353,7 +378,6 @@ def comm(gen1, gen2, suppress=""):
                 elem2, gen2_ended = get_next(gen2)
                 validate_sorted(prev1, elem1)
                 validate_sorted(prev2, elem2)
-
 
     yield from filter_nones(get_output(elem) for elem in inner_gen())
 
