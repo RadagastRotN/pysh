@@ -1,5 +1,7 @@
 import subprocess
 
+from tqdm import tqdm
+
 # https://sourceforge.net/projects/pysh/
 
 _generator_class = type((i for i in []))
@@ -226,6 +228,37 @@ def pipe_from_func(func, *args_o, **kwargs_o):
             yield func(elem, *args, *args_o, **kwargs, **kwargs_o)
 
     return inner
+
+
+class tqdm_wrapper(tqdm):
+
+    def __iter__(self):
+        for elem in super().__iter__():
+            self.total = len(self.iterable)
+            self.refresh()
+            yield elem
+
+
+@make_source
+def split_sequence(seq, part_len):
+    if '__iter__' in dir(seq):
+        seq = iter(seq)
+    empty = False
+
+    def inner():
+        try:
+            for _ in range(part_len):
+                yield next(seq)
+        except StopIteration:
+            nonlocal empty
+            empty = True
+            return
+
+    while not empty:
+        try:
+            yield inner()
+        except StopIteration:
+            return
 
 
 def _run_command(command):
