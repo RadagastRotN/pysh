@@ -261,12 +261,21 @@ def split_sequence(seq, part_len):
             return
 
 
-def _run_command(command):
+class CommandError(Exception):
+    pass
+
+
+def run_command(command, raise_on_error=True):
     """Runs any given shell command and captures its stdout and stderr"""
     result = subprocess.run(command, shell=True, capture_output=True)
-    output = result.stdout.decode('utf-8')  # decode bytes to string
     error = result.stderr.decode('utf-8')  # decode bytes to string
-    return output, error
+    if result.returncode != 0 and raise_on_error:
+        raise CommandError('Command returned {} exit code. Stderr:\n{}'.format(result.returncode, error))
+    output = result.stdout.decode('utf-8')  # decode bytes to string
+    if raise_on_error:
+        return output, error
+    else:
+        return output, error, result.returncode
 
 
 def _start_application(command):

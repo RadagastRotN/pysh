@@ -1,4 +1,6 @@
-from .generator import pipe_from_func, make_pipe, make_drain, make_source, generator
+from .generator import (pipe_from_func, make_pipe, make_drain, make_source,
+                        generator, tqdm_wrapper, split_sequence,run_command, CommandError
+                        )
 from .main import (sort, uniq, grep, cut, wc,
                    rev, sed,
                    comm, diff,
