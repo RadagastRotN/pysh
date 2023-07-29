@@ -1,3 +1,4 @@
+import bz2
 import sys
 
 from .generator import make_drain
@@ -32,6 +33,6 @@ def to_file(source, filename, mode="w"):
 def to_bz2(source, filename, mode='wt'):
     if 't' in mode:
         source = (line + '\n' for line in source)
-    with open(filename, mode) as outfile:
+    with bz2.open(filename, mode) as outfile:
         for line in source:
             outfile.write(line)

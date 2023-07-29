@@ -9,4 +9,4 @@ from .main import (sort, uniq, grep, cut, wc,
                    )
 from .file_utils import ls, cd, rm, mv, pwd, touch, mkdir, find
 from .sources import cat, cat_list, bz2_cat
-from .drains import echo, to_file, to_list
+from .drains import echo, to_file, to_list, to_bz2

@@ -1,6 +1,7 @@
 import unittest
+from pathlib import Path
 
-from pysh import cat, cat_list, rm
+from pysh import cat, cat_list, rm, to_bz2, bz2_cat, to_list
 
 
 class SourcesTest(unittest.TestCase):
@@ -25,3 +26,23 @@ class SourcesTest(unittest.TestCase):
         self.assertEqual(list(cat_list(lst[:])), lst)
         lst = [0, 1, 2, 3, 'a', 'b', 'c', [1, 2, 3]]
         self.assertEqual(list(cat_list(lst[:])), lst)
+
+    def test_bz2_cat(self):
+        FNAME = '/tmp/pysh_bz2_test.bz2'
+        content = ['a', 'bc', 'def', 'ghi', 'xx']
+        cat_list(content) | to_bz2(FNAME)
+        self.assertTrue(Path(FNAME).exists())
+        result = bz2_cat(FNAME) | to_list()
+        self.assertEqual(content, result)
+        gen = bz2_cat(FNAME, with_len=True)
+        self.assertEqual(len(gen), 5)
+        self.assertEqual(content, list(gen))
+        content = ['Lorem ipsum dolor sit amet,', 'consectetur adipiscing elit,', 'sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.', '×÷±°¾≈']
+        cat_list(content) | to_bz2(FNAME)
+        self.assertTrue(Path(FNAME).exists())
+        result = bz2_cat(FNAME) | to_list()
+        self.assertEqual(content, result)
+        gen = bz2_cat(FNAME, with_len=True)
+        self.assertEqual(len(gen), 4)
+        self.assertEqual(content, list(gen))
+        rm(FNAME)
