@@ -39,7 +39,6 @@ class grep(Generator):
     N - prepend numbers
     """
 
-
     @Generator.source.setter
     def source(self, val):
         Generator.source.fset(self, val)
@@ -76,11 +75,11 @@ class grep(Generator):
             elif self.__len is not None:
                 self.__len -= 1
 
-    def __len__(self):
-        if self.__len is not None:
-            return self.__len
-        else:
-            raise ValueError('This grep\'s source doesn\'t provide length.')
+    # def __len__(self):
+    #     if self.__len is not None:
+    #         return self.__len
+    #     else:
+    #         raise ValueError('This grep\'s source doesn\'t provide length.')
 
 
 class uniq(Generator):
@@ -189,7 +188,7 @@ def sed(source, command, src, dest, flags=NO_FLAGS):
         for line in source:
             yield "".join(mapping.get(char, char) for char in line)
 
-
+# TODO: change it to function
 class cut(Generator):
     """
     Cuts each string into parts by given delimiter and returns selected ones;
