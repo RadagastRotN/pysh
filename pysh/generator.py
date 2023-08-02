@@ -76,13 +76,13 @@ class Generator(PipeElement):
 
 
 class KnownLengthGenerator(Generator):
-    # cat, cat_list, bz2_cat - cat i bz2_cat kosztowne, więc albo na prośbę użytkownika, albo wg rozmaru pliku w bajtach
-    # drains - wszystkie mogą dziedziczyć
+    # DONE: cat, cat_list, bz2_cat - cat i bz2_cat kosztowne, więc albo na prośbę użytkownika, albo wg rozmaru pliku w bajtach
+    # drains - nie iteruje się po nich
     # grep, comm, diff, uniq - tylko aktualizowane co wywołanie
     # split_sequence dziedziczy (ale dzieli przez długość sekwencji)
     # sort, cut, rev, sed - dziedziczą
-    # head, tail - prawie stałe (z dokładnością do zbyt krótkich sekwencji i ujemnych n)
     # ls, find - nie da się/bez sensu
+    # można spróbować szacować cat i bz2_cat na podstawie rozmiaru w B
 
     # case 0 - inherit from source
     # case 1 - set one length at the creation
@@ -128,11 +128,15 @@ class GeneratorConcat(Generator):
         return GeneratorConcat(other, self)
 
 
-def make_pipe(len_):
+def make_pipe(func=None, len_=None, len_update=None):
     """
     Decorator for a function, turning it to generator
     the decorated function is called for every element of source sequence
+    len_update: inherit, start, every
     """
+
+    if len_update is None and len_ is not None:
+        len_update = 'start'
 
     def inner(func):
         # @wraps(func)
@@ -142,6 +146,8 @@ def make_pipe(len_):
                 super().__init__(None)
                 self.args = args
                 self.kwargs = kwargs
+                if len_update == 'start':
+                    self.__len = len_(*args, **kwargs)
 
             def gen(self):
                 if self.source is not None:
@@ -156,10 +162,21 @@ def make_pipe(len_):
                     source = iter(source)
                 yield from func(source, *self.args, **self.kwargs)
 
+        if len_update == 'inherit':
+            def __len__(self):
+                return len(self.source)
+
+        elif len_update is not None:
+            def __len__(self):
+                return self._decorator__len
+
+        if len_update is not None:
+            decorator.__len__ = __len__
+
         return decorator
 
-    if "__call__" in dir(len_):
-        return inner(len_)
+    if func is not None:
+        return inner(func)
     else:
         return inner
 
