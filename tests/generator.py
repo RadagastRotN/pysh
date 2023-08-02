@@ -1,6 +1,6 @@
 import unittest
 
-from pysh import pipe_from_func, cat_list, make_pipe, make_drain, tail, head, to_list, make_source
+from pysh import pipe_from_func, cat_list, make_pipe, make_drain, tail, head, to_list, make_source, split_sequence
 
 
 class GeneratorTest(unittest.TestCase):
