@@ -188,37 +188,28 @@ def sed(source, command, src, dest, flags=NO_FLAGS):
         for line in source:
             yield "".join(mapping.get(char, char) for char in line)
 
-# TODO: change it to function
-class cut(Generator):
-    """
-    Cuts each string into parts by given delimiter and returns selected ones;
-    parts may be selected both as ranges (e.g. 2-4) or list (e.g. 1,3) or both (e.g. 1-3,5)
-    """
 
-    def __init__(self, fields, delimiter=" ", skip_errors=False):
-        super().__init__(None)
-        self.delimiter = delimiter
-        self.skip_errors = skip_errors
-        if type(fields) is int:
-            self.fields = {fields}
-        else:
-            self.fields = []
-            fields = fields.split(",")
-            for ind, field in enumerate(fields):
-                if "-" in field:
-                    field = field.split("-")
-                    field = list(range(int(field[0]), int(field[1]) + 1))
-                    self.fields += field
-                else:
-                    self.fields += [int(field)]
-            self.fields = sorted(set(self.fields))
-
-    def gen(self):
-        for line_no, line in enumerate(self.source, start=1):
-            line = line.split(self.delimiter)
-            if not self.skip_errors and max(self.fields) > len(line):
-                raise ValueError("Line {} has {} fields; {} requested.".format(line_no, len(line), max(self.fields)))
-            yield list(elem for ind, elem in enumerate(line, start=1) if ind in self.fields)
+@make_pipe
+def cut(source, fields, delimiter=" ", skip_errors=False):
+    if type(fields) is int:
+        fields_list = {fields}
+    else:
+        fields_list = []
+        fields = fields.split(",")
+        for ind, field in enumerate(fields):
+            if "-" in field:
+                field = field.split("-")
+                field = list(range(int(field[0]), int(field[1]) + 1))
+                fields_list += field
+            else:
+                fields_list += [int(field)]
+    fields_list = sorted(set(fields_list))
+    max_field = max(fields_list)
+    for line_no, line in enumerate(source, start=1):
+        line = line.split(delimiter)
+        if not skip_errors and max_field > len(line):
+            raise ValueError("Line {} has {} fields; {} requested.".format(line_no, len(line), max_field))
+        yield list(elem for ind, elem in enumerate(line, start=1) if ind in fields_list)
 
 
 def _wcl(filename):

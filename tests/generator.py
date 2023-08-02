@@ -68,7 +68,7 @@ class GeneratorTest(unittest.TestCase):
             yield 9
             yield 16
 
-        self.assertEqual(squares() | (lambda x: x*2) | to_list(), [2, 8, 18, 32])
+        self.assertEqual(squares() | (lambda x: x * 2) | to_list(), [2, 8, 18, 32])
 
         def squares2():
             return [1, 4, 9, 16]
@@ -77,3 +77,18 @@ class GeneratorTest(unittest.TestCase):
 
     def test_concatenation(self):
         self.assertEqual((range(100) | head(3)) + (range(100) | tail(3)) | to_list(), [0, 1, 2, 97, 98, 99])
+
+    def test_split_sequence(self):
+        split_gens = split_sequence(cat_list(list(range(20))), 9)
+        self.assertEqual(list(next(split_gens)), list(range(0, 9)))
+        self.assertEqual(list(next(split_gens)), list(range(9, 18)))
+        self.assertEqual(list(next(split_gens)), list(range(18, 20)))
+        with self.assertRaises(StopIteration):
+            next(split_gens)
+        split_gens = split_sequence(cat_list(list(range(8))), 2)
+        self.assertEqual(list(next(split_gens)), list(range(0, 2)))
+        self.assertEqual(list(next(split_gens)), list(range(2, 4)))
+        self.assertEqual(list(next(split_gens)), list(range(4, 6)))
+        self.assertEqual(list(next(split_gens)), list(range(6, 8)))
+        with self.assertRaises(StopIteration):
+            next(split_gens)
